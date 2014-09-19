@@ -1,12 +1,11 @@
 package sharded_counter
 
 import (
-	"fmt"
-	"math/rand"
-
 	"appengine"
 	"appengine/datastore"
 	"appengine/memcache"
+	"fmt"
+	"math/rand"
 )
 
 type counterConfig struct {
@@ -72,16 +71,17 @@ func Increment(c appengine.Context, name string) error {
 		return err
 	}
 	err = datastore.RunInTransaction(c, func(c appengine.Context) error {
+		pKey := datastore.NewKey(c, configKind, name, 0, nil)
 		shardName := fmt.Sprintf("shard%d", rand.Intn(cfg.Shards))
-		key := datastore.NewKey(c, shardKind, shardName, 0, nil)
+		key := datastore.NewKey(c, shardKind, shardName, 0, pKey)
 		var s shard
 		err := datastore.Get(c, key, &s)
 		// A missing entity and a present entity will both work.
 		if err != nil && err != datastore.ErrNoSuchEntity {
 			return err
 		}
-		s.Name = name
 		s.Count++
+		s.Name = name
 		_, err = datastore.Put(c, key, &s)
 		return err
 	}, nil)
