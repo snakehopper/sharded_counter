@@ -47,9 +47,8 @@ func Count(c appengine.Context, name string) (int, error) {
 		total += s.Count
 	}
 	memcache.JSON.Set(c, &memcache.Item{
-		Key:        mkey,
-		Object:     &total,
-		Expiration: 60,
+		Key:    mkey,
+		Object: &total,
 	})
 	return total, nil
 }
@@ -70,6 +69,7 @@ func Increment(c appengine.Context, name string) error {
 	if err != nil {
 		return err
 	}
+
 	err = datastore.RunInTransaction(c, func(c appengine.Context) error {
 		pKey := datastore.NewKey(c, configKind, name, 0, nil)
 		shardName := fmt.Sprintf("shard%d", rand.Intn(cfg.Shards))
@@ -88,7 +88,8 @@ func Increment(c appengine.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	memcache.Increment(c, memcacheKey(name), 1, 0)
+
+	memcache.IncrementExisting(c, memcacheKey(name), 1)
 	return nil
 }
 
