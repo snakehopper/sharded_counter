@@ -34,7 +34,8 @@ func Count(c appengine.Context, name string) (int, error) {
 	if _, err := memcache.JSON.Get(c, mkey, &total); err == nil {
 		return total, nil
 	}
-	q := datastore.NewQuery(shardKind).Filter("Name =", name)
+	pKey := datastore.NewKey(c, configKind, name, 0, nil)
+	q := datastore.NewQuery(shardKind).Ancestor(pKey).Filter("Name =", name)
 	for t := q.Run(c); ; {
 		var s shard
 		_, err := t.Next(&s)
@@ -71,9 +72,8 @@ func Increment(c appengine.Context, name string) error {
 	}
 
 	err = datastore.RunInTransaction(c, func(c appengine.Context) error {
-		pKey := datastore.NewKey(c, configKind, name, 0, nil)
 		shardName := fmt.Sprintf("shard%d", rand.Intn(cfg.Shards))
-		key := datastore.NewKey(c, shardKind, shardName, 0, pKey)
+		key := datastore.NewKey(c, shardKind, shardName, 0, ckey)
 		var s shard
 		err := datastore.Get(c, key, &s)
 		// A missing entity and a present entity will both work.
