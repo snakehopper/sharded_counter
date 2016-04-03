@@ -1,10 +1,10 @@
 package sharded_counter
 
 import (
-	"appengine"
-	"appengine/datastore"
-	"appengine/memcache"
 	"fmt"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/memcache"
 	"math/rand"
 )
 
@@ -28,7 +28,7 @@ func memcacheKey(name string) string {
 }
 
 // Count retrieves the value of the named counter.
-func Count(c appengine.Context, name string) (int, error) {
+func Count(c context.Context, name string) (int, error) {
 	total := 0
 	mkey := memcacheKey(name)
 	if _, err := memcache.JSON.Get(c, mkey, &total); err == nil {
@@ -55,11 +55,11 @@ func Count(c appengine.Context, name string) (int, error) {
 }
 
 // Increment increments the named counter.
-func Increment(c appengine.Context, name string) error {
+func Increment(c context.Context, name string) error {
 	// Get counter config.
 	var cfg counterConfig
 	ckey := datastore.NewKey(c, configKind, name, 0, nil)
-	err := datastore.RunInTransaction(c, func(c appengine.Context) error {
+	err := datastore.RunInTransaction(c, func(c context.Context) error {
 		err := datastore.Get(c, ckey, &cfg)
 		if err == datastore.ErrNoSuchEntity {
 			cfg.Shards = defaultShards
@@ -71,7 +71,7 @@ func Increment(c appengine.Context, name string) error {
 		return err
 	}
 
-	err = datastore.RunInTransaction(c, func(c appengine.Context) error {
+	err = datastore.RunInTransaction(c, func(c context.Context) error {
 		shardName := fmt.Sprintf("shard%d", rand.Intn(cfg.Shards))
 		key := datastore.NewKey(c, shardKind, shardName, 0, ckey)
 		var s shard
@@ -95,9 +95,9 @@ func Increment(c appengine.Context, name string) error {
 
 // IncreaseShards increases the number of shards for the named counter to n.
 // It will never decrease the number of shards.
-func IncreaseShards(c appengine.Context, name string, n int) error {
+func IncreaseShards(c context.Context, name string, n int) error {
 	ckey := datastore.NewKey(c, configKind, name, 0, nil)
-	return datastore.RunInTransaction(c, func(c appengine.Context) error {
+	return datastore.RunInTransaction(c, func(c context.Context) error {
 		var cfg counterConfig
 		mod := false
 		err := datastore.Get(c, ckey, &cfg)
